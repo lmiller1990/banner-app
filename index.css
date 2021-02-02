@@ -1,0 +1,30 @@
+* {
+  box-sizing: border-box;
+}
+
+#app {
+  border: 1px solid black;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: white;
+}
+
+#aspect-ratio {
+  display: grid;
+}
+
+#aspect-ratio > * {
+  grid-area: 1 / 1 / 2 / 2;
+}
+
+.el {
+  position: absolute;
+  background: red;
+  height: 100px;
+  width: 100px;
+}
+
+.el--selected {
+  border: 2px solid black;
+}
