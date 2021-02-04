@@ -17,6 +17,11 @@
   grid-area: 1 / 1 / 2 / 2;
 } */
 
+p {
+  margin: 0;
+  padding: 0;
+}
+
 .el {
   position: absolute;
   background: red;

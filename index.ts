@@ -3,7 +3,7 @@ function $<T extends HTMLDivElement>(q: string) {
 }
 
 function $$<T extends HTMLDivElement>(q: string) {
-  return document.querySelectorAll<T>(q)
+  return Array.from(document.querySelectorAll<T>(q))
 }
 
 const $app = $<HTMLDivElement>('#app')!
@@ -147,15 +147,34 @@ $app.addEventListener('mouseup', e => {
 })
 
 function handleDragging(e: MouseEvent) {
-  console.log(id)
-  const handles = $$(`[data-el="${id}"]`)
-  console.log(handles)
   const $el = $(`#${id}`)!
   const { x, y } = getPos(e)
   const dx = x - clickX
   const dy = y - clickY
   $el.style.left = `${originalRect.left + dx}px`
   $el.style.top = `${originalRect.top + dy}px`
+  const handles = $$(`[data-el="${id}"]`)
+  handles.forEach($h => {
+    if ($h.id.includes('bl')) {
+      $h.style.left = `${originalHandlePos.bl.left + dx}px`
+      $h.style.top = `${originalHandlePos.bl.top + dy}px`
+    }
+
+    if ($h.id.includes('br')) {
+      $h.style.left = `${originalHandlePos.br.left + dx}px`
+      $h.style.top = `${originalHandlePos.br.top + dy}px`
+    }
+
+    if ($h.id.includes('tl')) {
+      $h.style.left = `${originalHandlePos.tl.left + dx}px`
+      $h.style.top = `${originalHandlePos.tl.top + dy}px`
+    }
+
+    if ($h.id.includes('tr')) {
+      $h.style.left = `${originalHandlePos.tr.left + dx}px`
+      $h.style.top = `${originalHandlePos.tr.top + dy}px`
+    }
+  })
 }
 
 function handleResize(e: MouseEvent) {
@@ -331,7 +350,8 @@ function drawBase() {
   $app.appendChild($layer)
 }
 
-function onElementMouseDown(e: MouseEvent, $el: HTMLElement) {
+function onElementMouseDown(e: MouseEvent, $el: HTMLDivElement) {
+  originalHandlePos = calcHandPos($el)
   setDragging(true)
   id = $el.id
   const { x, y } = getPos(e)
