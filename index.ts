@@ -73,12 +73,17 @@ function createEl(layer: Layer) {
   return $el
 }
 
+let resizing = false
 let dragging = false
-const $drag = $<HTMLDivElement>('#dragging-val')!
+const $resizing = $<HTMLDivElement>('#resizing-val')!
+
+function setResizing(val: boolean) {
+  resizing = val
+  $resizing.innerText = val.toString()
+}
 
 function setDragging(val: boolean) {
   dragging = val
-  $drag.innerText = val.toString()
 }
 
 type HandlePosition = 'tr' | 'tl' | 'br' | 'bl'
@@ -120,14 +125,14 @@ const $cursor = $<HTMLDivElement>('#cursor-val')!
 const $handlePos = $<HTMLDivElement>('#handle-pos-val')!
 const $id = $<HTMLDivElement>('#id-val')!
 
-function mousedown(e: MouseEvent, $h: HTMLDivElement, pos: HandlePosition, $el: HTMLDivElement) {
-  setDragging(true)
+function startResize(e: MouseEvent, $h: HTMLDivElement, pos: HandlePosition, $el: HTMLDivElement) {
+  setResizing(true)
   const { x, y } = getPos(e)
   clickX = x 
   clickY = y
+  originalRect = getPosRelToApp($el)
   id = $el.id
   const handleRect = getPosRelToApp($h)
-  originalRect = getPosRelToApp($el)
   originalHandlePos = calcHandPos($el)
   handlePos = pos
   $cursor.innerText = `x: ${x} y: ${y}`
@@ -137,15 +142,24 @@ function mousedown(e: MouseEvent, $h: HTMLDivElement, pos: HandlePosition, $el: 
 }
 
 $app.addEventListener('mouseup', e => {
+  setResizing(false)
   setDragging(false)
 })
 
-$app.addEventListener('mousemove', e => {
-  if (!dragging) {
-    return
-  }
-
+function handleDragging(e: MouseEvent) {
+  console.log(id)
+  const handles = $$(`[data-el="${id}"]`)
+  console.log(handles)
+  const $el = $(`#${id}`)!
   const { x, y } = getPos(e)
+  const dx = x - clickX
+  const dy = y - clickY
+  $el.style.left = `${originalRect.left + dx}px`
+  $el.style.top = `${originalRect.top + dy}px`
+}
+
+function handleResize(e: MouseEvent) {
+  let { x, y } = getPos(e)
   const dx = x - clickX
   const dy = y - clickY
   const $el = $(`#${id}`)!
@@ -209,6 +223,17 @@ $app.addEventListener('mousemove', e => {
     $tl.style.left = `${originalHandlePos.tl.left + dx}px`
     $bl.style.left = `${originalHandlePos.bl.left + dx}px`
   }
+}
+
+$app.addEventListener('mousemove', (e: MouseEvent) => {
+  if (dragging) {
+    return handleDragging(e)
+  }
+
+
+  if (resizing) {
+    return handleResize(e)
+  }
 })
 
 function layerRect($el: HTMLDivElement) {
@@ -232,13 +257,7 @@ interface CreateHandleOptions {
   id: string
   pos: HandlePosition
 }
-/** 
- * options
- * top
- * left
- * id
- * pos: bl br tl tr
- */
+
 function createHandle(options: CreateHandleOptions) {
   const $handle = document.createElement('div')
   $handle.style.background = 'white'
@@ -250,7 +269,7 @@ function createHandle(options: CreateHandleOptions) {
   $handle.className = 'cursor-pointer'
   $handle.style.height = `${sz}px`
   $handle.style.width =  `${sz}px`
-  $handle.addEventListener('mousedown', e => mousedown(e, $handle, options.pos, options.$el))
+  $handle.addEventListener('mousedown', e => startResize(e, $handle, options.pos, options.$el))
   return $handle
 }
 
@@ -312,9 +331,36 @@ function drawBase() {
   $app.appendChild($layer)
 }
 
+function onElementMouseDown(e: MouseEvent, $el: HTMLElement) {
+  setDragging(true)
+  id = $el.id
+  const { x, y } = getPos(e)
+  clickX = x 
+  clickY = y
+  originalRect = getPosRelToApp($el)
+}
+
+function onElementMove(e: MouseEvent, $el: HTMLElement) {
+  if (!dragging) {
+    return
+  }
+
+  const { x, y } = getPos(e)
+  const dx = x - clickX
+  const dy = y - clickY
+  $el.style.left = `${originalRect.left + dx}px`
+  $el.style.top = `${originalRect.top + dy}px`
+}
+
 function render(layers: Layer[]) {
   for (const layer of layers) {
     const $el = createEl(layer)
+    $el.addEventListener('mousedown', e => onElementMouseDown(e, $el))
+    $el.addEventListener('mouseup', e => {
+      setDragging(false)
+    })
+    // $el.addEventListener('mousemove', e => onElementMove(e, $el))
+
     $app.appendChild($el)
 
     const { br, bl, tr, tl } = calcHandPos($el)
