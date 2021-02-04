@@ -14,6 +14,8 @@ function getPosRelToApp($el) {
   return {
     top: elRect.top - appRect.top,
     left: elRect.left - appRect.left,
+    width: elRect.width,
+    height: elRect.height,
   }
 }
 
@@ -90,31 +92,38 @@ function stopDrag(e, $h) {
 let clickX
 let clickY
 let originalW
+let originalL
 let originalH
-let originalHandleTop
-let originalHandleLeft
+let handlePos
+let handles
+let originalHandlePos
+let originalRect
 
 let id
 const $cursor = $('#cursor-val')
+const $handlePos = $('#handle-pos-val')
 const $id = $('#id-val')
 
-function mousedown(e, $h, $el) {
+function mousedown(e, $h, pos, $el) {
   setDragging(true)
   const { x, y } = getPos(e)
   clickX = x 
   clickY = y
   id = $el.id
-  const { width, height } = $el.getBoundingClientRect()
   const handleRect = getPosRelToApp($h)
-  originalW = width
-  originalH = height
-  originalHandleTop = handleRect.top
-  originalHandleLeft = handleRect.left
+  originalRect = getPosRelToApp($el)
+  originalHandlePos = calcHandPos($el)
+  handlePos = pos
   $cursor.innerText = `x: ${x} y: ${y}`
+  $handlePos.innerText = `x: ${handleRect.left} y: ${handleRect.top}`
   $id.innerText = $el.id
+  const sel = `[data-el="${$el.id}"]`
+  handles = Array.from($$(sel))
 }
 
-$app.addEventListener('mouseup', e => stopDrag(e))
+$app.addEventListener('mouseup', e => {
+  stopDrag(e)
+})
 
 $app.addEventListener('mousemove', e => {
   if (!dragging) {
@@ -125,11 +134,66 @@ $app.addEventListener('mousemove', e => {
   const dx = x - clickX
   const dy = y - clickY
   const $el = $(`#${id}`)
-  const $h = $(`#${id}-h-br`)
-  $el.style.width = `${originalW + dx}px`
-  $el.style.height = `${originalH + dy}px`
-  $h.style.top = `${originalHandleTop + dy}px`
-  $h.style.left = `${originalHandleLeft + dx}px`
+
+  if (handlePos === 'br') {
+    const $br = $(`#${$el.id}-h-br`)
+    const $bl = $(`#${$el.id}-h-bl`)
+    const $tr = $(`#${$el.id}-h-tr`)
+
+    $el.style.width = `${originalRect.width + dx}px`
+    $el.style.height = `${originalRect.height + dy}px`
+
+    $br.style.top = `${originalHandlePos.br.top + dy}px`
+    $br.style.left = `${originalHandlePos.br.left + dx}px`
+    $bl.style.top = `${originalHandlePos.bl.top + dy}px`
+    $tr.style.left = `${originalHandlePos.tr.left + dx}px`
+  }
+
+  if (handlePos === 'bl') {
+    $el.style.width = `${originalRect.width - dx}px`
+    $el.style.left = `${originalRect.left + dx}px`
+    $el.style.height = `${originalRect.height + dy}px`
+
+    const $br = $(`#${$el.id}-h-br`)
+    const $bl = $(`#${$el.id}-h-bl`)
+    const $tl = $(`#${$el.id}-h-tl`)
+
+    $bl.style.top = `${originalHandlePos.bl.top + dy}px`
+    $bl.style.left = `${originalHandlePos.bl.left + dx}px`
+    $tl.style.left = `${originalHandlePos.tl.left + dx}px`
+    $br.style.top = `${originalHandlePos.br.top + dy}px`
+  }
+
+  if (handlePos === 'tr') {
+    $el.style.width = `${originalRect.width + dx}px`
+    $el.style.height = `${originalRect.height - dy}px`
+    $el.style.top = `${originalRect.top + dy}px`
+
+    const $br = $(`#${$el.id}-h-br`)
+    const $tl = $(`#${$el.id}-h-tl`)
+    const $tr = $(`#${$el.id}-h-tr`)
+
+    $tr.style.top = `${originalHandlePos.tr.top + dy}px`
+    $tr.style.left = `${originalHandlePos.tr.left + dx}px`
+    $tl.style.top = `${originalHandlePos.tl.top + dy}px`
+    $br.style.left = `${originalHandlePos.br.left + dx}px`
+  }
+
+  if (handlePos === 'tl') {
+    $el.style.width = `${originalRect.width - dx}px`
+    $el.style.height = `${originalRect.height - dy}px`
+    $el.style.top = `${originalRect.top + dy}px`
+    $el.style.left = `${originalRect.left + dx}px`
+
+    const $bl = $(`#${$el.id}-h-bl`)
+    const $tl = $(`#${$el.id}-h-tl`)
+    const $tr = $(`#${$el.id}-h-tr`)
+
+    $tr.style.top = `${originalHandlePos.tr.top + dy}px`
+    $tl.style.top = `${originalHandlePos.tl.top + dy}px`
+    $tl.style.left = `${originalHandlePos.tl.left + dx}px`
+    $bl.style.left = `${originalHandlePos.bl.left + dx}px`
+  }
 })
 
 function layerRect($el) {
@@ -146,48 +210,26 @@ function layerRect($el) {
 
 const sz = 10
 
-function createHandle() {
+/** 
+ * options
+ * top
+ * left
+ * id
+ * pos: bl br tl tr
+ */
+function createHandle(options) {
   const $handle = document.createElement('div')
   $handle.style.background = 'white'
   $handle.style.position = 'absolute'
+  $handle.style.left = `${options.left}px`
+  $handle.style.top = `${options.top}px`
+  $handle.id = `${options.$el.id}-${options.id}`
+  $handle.dataset.el = options.$el.id
   $handle.className = 'cursor-pointer'
   $handle.style.height = `${sz}px`
   $handle.style.width =  `${sz}px`
+  $handle.addEventListener('mousedown', e => mousedown(e, $handle, options.pos, options.$el))
   return $handle
-}
-
-function elClick(e, $el) {
-
-  // top left
-  let $h = createHandle()
-  $h.id = $el.id + `-h-tl`
-  $h.style.top = rect.top - (sz/2) + 'px'
-  $h.style.left = rect.left - (sz/2) + 'px'
-  $h.addEventListener('mousedown', e => mousedown(e, $h, $el))
-  // $app.appendChild($h)
-
-  // top right
-  $h = createHandle()
-  $h.style.top = rect.top - (sz/2) + 'px'
-  $h.style.left = rect.left + rect.width - (sz/2) + 'px'
-  $h.addEventListener('mousedown', e => mousedown(e, $h, $el))
-  // $app.appendChild($h)
-
-  const rect = layerRect($el)
-  // bottom right
-  $h = createHandle()
-  $h.style.top = rect.top + rect.height - (sz/2) + 'px'
-  $h.style.left = rect.left + rect.width - (sz/2) + 'px'
-  $h.id = $el.id + `-h-br`
-  $app.appendChild($h)
-  $h.addEventListener('mousedown', e => mousedown(e, $h, $el))
-
-  // bottom left
-  $h = createHandle()
-  $h.style.top = rect.top + rect.height - (sz/2) + 'px'
-  $h.style.left = rect.left - (sz/2) + 'px'
-  $h.addEventListener('mousedown', e => mousedown(e, $h, $el))
-  // $app.appendChild($h)
 }
 
 let layers = [
@@ -202,6 +244,29 @@ let layers = [
     }
   }
 ]
+
+function calcHandPos($el) {
+  const rect = layerRect($el)
+
+  return {
+    tl: {
+      top: rect.top - (sz / 2),
+      left: rect.left - (sz / 2),
+    },
+    tr: {
+      top: rect.top - (sz / 2),
+      left: rect.left + rect.width - (sz / 2),
+    },
+    br: {
+      top: rect.top + rect.height - (sz / 2),
+      left: rect.left + rect.width - (sz / 2),
+    },
+    bl: {
+      top: rect.top + rect.height - (sz / 2),
+      left: rect.left - (sz / 2),
+    },
+  }
+}
 
 function drawBase() {
   const $layer = document.createElement('div')
@@ -219,16 +284,43 @@ function render(layers) {
     const $el = createEl(layer)
     $app.appendChild($el)
 
+    const { br, bl, tr, tl } = calcHandPos($el)
+    const $br = createHandle({
+      $el,
+      id: 'h-br',
+      pos: 'br',
+      top: br.top,
+      left: br.left,
+    })
+    $app.appendChild($br)
 
-    const rect = layerRect($el)
-    // bottom right
-    const $h = createHandle()
+    const $bl = createHandle({
+      $el,
+      id: 'h-bl',
+      pos: 'bl',
+      top: bl.top,
+      left: bl.left,
+    })
+    $app.appendChild($bl)
 
-    $h.style.top = rect.top + rect.height - (sz/2) + 'px'
-    $h.style.left = rect.left + rect.width - (sz/2) + 'px'
-    $h.id = $el.id + `-h-br`
-    $app.appendChild($h)
-    $h.addEventListener('mousedown', e => mousedown(e, $h, $el))
+    const $tr = createHandle({
+      $el,
+      id: 'h-tr',
+      pos: 'tr',
+      top: tr.top,
+      left: tr.left,
+    })
+
+    $app.appendChild($tr)
+    const $tl = createHandle({
+      $el,
+      id: 'h-tl',
+      pos: 'tl',
+      top: tl.top,
+      left: tl.left,
+    })
+    $app.appendChild($tl)
+
   }
 }
 
