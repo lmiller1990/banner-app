@@ -1,3 +1,14 @@
+import { 
+  addHistoryEntry, 
+  addHistoryEntryInvalidateFuture,
+  Move,
+  Resize,
+  Action,
+  Styles,
+  Create,
+  createShape
+} from './core'
+
 function $<T extends HTMLElement>(q: string) {
   return document.querySelector<T>(q)
 }
@@ -59,18 +70,18 @@ $app.addEventListener('click', (e) => {
   $app.appendChild($el)
 })
 
-function createEl(layer: Layer) {
-  const $el = document.createElement(layer.el.type)
-  $el.id = layer.el.id
-  $el.style.top = layer.el.top + 'px'
-  $el.style.left = layer.el.left + 'px'
-  $el.style.width = layer.el.width + 'px'
-  $el.style.height = layer.el.height + 'px'
-  $el.style.background = layer.el.background
-  $el.style.position = 'absolute'
-  $el.textContent = layer.el.text
-  return $el
-}
+// function createEl(layer: Layer) {
+//   const $el = document.createElement(layer.type)
+//   $el.id = layer.id
+//   $el.style.top = layer.rect.top + 'px'
+//   $el.style.left = layer.rect.left + 'px'
+//   $el.style.width = layer.rect.width + 'px'
+//   $el.style.height = layer.rect.height + 'px'
+//   $el.style.background = layer.styles.background || ''
+//   $el.style.position = 'absolute'
+//   $el.textContent = layer.text || ''
+//   return $el
+// }
 
 let resizing = false
 let dragging = false
@@ -87,7 +98,7 @@ function setDragging(val: boolean) {
 
 type HandlePosition = 'tr' | 'tl' | 'br' | 'bl'
 
-interface Rect {
+export interface Rect {
   top: number
   left: number 
   width: number 
@@ -117,8 +128,18 @@ let clickX: number
 let clickY: number
 let handlePos: HandlePosition
 let originalHandlePos: HandleCoordinates
+let dx: number = 0
+let dy: number = 0
 let originalRect: Rect
 let selectedId: string
+
+const getSelectedElement = (id?: string) => {
+  if (!id) {
+    throw Error('No selected id')
+  }
+
+  return $('#' + selectedId)!
+}
 
 const $cursor = $<HTMLDivElement>('#cursor-val')!
 const $handlePos = $<HTMLDivElement>('#handle-pos-val')!
@@ -129,8 +150,21 @@ const $layers = $<HTMLDivElement>('#layers')!
 $addRandomShape.addEventListener('click', () => {
   const randomTop = () => parseInt((Math.random() * 300).toFixed())
   const randomLeft = () => parseInt((Math.random() * 550).toFixed())
-  const layer = createLayer({ top: randomTop(), left: randomLeft(), height: 100, width: 200 }, { background: 'red' })
-  render([layer])
+  const action: Create = {
+    type: 'create',
+    id: randomId(),
+    element: 'div',
+    props: {
+      top: randomTop(),
+      left: randomLeft(),
+      height: 100,
+      width: 200,
+      styles: {
+        background: 'blue'
+      }
+    }
+  }
+  render([action])
 })
 
 function setSelectedId(id: string) {
@@ -158,15 +192,48 @@ function startResize(e: MouseEvent, $h: HTMLDivElement, pos: HandlePosition, $el
 }
 
 $app.addEventListener('mouseup', e => {
-  setResizing(false)
+  const currentBoundingRect = getSelectedElement(selectedId).getBoundingClientRect()
+  const hasResized = (dx !== 0 || dy !== 0 || currentBoundingRect.width !== originalRect.width || currentBoundingRect.height !== originalRect.height)
+
+  if (resizing && hasResized) {
+    const action: Resize = {
+      type: 'resize',
+      id: selectedId,
+      props: {
+        top: originalRect.top + dy,
+        left: originalRect.left + dx,
+        width: currentBoundingRect.width,
+        height: currentBoundingRect.height
+      }
+    }
+    history = addHistoryEntry({ history, action })
+  }
+
+  const hasMoved = (dx !== 0 || dy !== 0)
+  if (dragging && hasMoved) {
+    const action: Move = {
+      type: 'move',
+      id: selectedId,
+      props: {
+        top: originalRect.top + dy,
+        left: originalRect.left + dx,
+      }
+    }
+    history = addHistoryEntry({ history, action })
+  }
+
   setDragging(false)
+  setResizing(false)
+  dx = 0
+  dy = 0
 })
 
 function handleDragging(e: MouseEvent) {
-  const $el = $(`#${selectedId}`)!
+  const $el = getSelectedElement(selectedId)
   const { x, y } = getPos(e)
-  const dx = x - clickX
-  const dy = y - clickY
+  dx = x - clickX
+  dy = y - clickY
+  console.log(dx,dy)
   $el.style.left = `${originalRect.left + dx}px`
   $el.style.top = `${originalRect.top + dy}px`
   const handles = $$(`[data-el="${selectedId}"]`)
@@ -195,8 +262,8 @@ function handleDragging(e: MouseEvent) {
 
 function handleResize(e: MouseEvent) {
   let { x, y } = getPos(e)
-  const dx = x - clickX
-  const dy = y - clickY
+  dx = x - clickX
+  dy = y - clickY
   const $el = $(`#${selectedId}`)!
 
   if (handlePos === 'br') {
@@ -310,36 +377,35 @@ function createHandle(options: CreateHandleOptions) {
   return $handle
 }
 
-interface Layer {
-  el: {
-    id: string
-    type: 'div' | 'p'
-    top: number
-    left: number
-    height: number
-    width: number
-    text: string
-    background: string
-  }
+export interface Layer {
+  id: string
+  type: 'div' | 'p'
+  rect: Rect
+  text?: string
+  styles: Styles
 }
 
-function createLayer({ top, left, height, width }: Rect, style: Record<'background', string>): Layer {
-  return {
-    el: {
-      id: `el-${(Math.random() * 1000).toFixed()}`,
-      type: 'p',
-      top,
-      background: style.background,
-      left,
-      height,
-      width,
-      text: 'Making a program'
+function randomId() {
+  return (Math.random() * 10000).toFixed()
+}
+
+const initial: Create = {
+  type: 'create',
+  id: randomId(),
+  element: 'div',
+  props: {
+    top: 50,
+    left: 50,
+    height: 100,
+    width: 200,
+    styles: {
+      background: 'red'
     }
   }
 }
 
-let layers: Layer[] = [
-  createLayer({ top: 50, left: 50, height: 100, width: 200 }, { background: 'red' })
+let history: Action[] = [
+  initial
 ]
 
 function calcHandPos($el: HTMLDivElement) {
@@ -378,34 +444,26 @@ function drawBase() {
 
 function onElementMouseDown(e: MouseEvent, $el: HTMLDivElement) {
   originalHandlePos = calcHandPos($el)
+  originalRect = getPosRelToApp($el)
   setDragging(true)
   setSelectedId($el.id)
   const { x, y } = getPos(e)
   clickX = x 
   clickY = y
-  originalRect = getPosRelToApp($el)
 }
 
-function onElementMove(e: MouseEvent, $el: HTMLElement) {
-  if (!dragging) {
-    return
-  }
-
-  const { x, y } = getPos(e)
-  const dx = x - clickX
-  const dy = y - clickY
-  $el.style.left = `${originalRect.left + dx}px`
-  $el.style.top = `${originalRect.top + dy}px`
-}
-
-function render(layers: Layer[]) {
-  for (const layer of layers) {
-    const $el = createEl(layer)
-    $el.addEventListener('mousedown', e => onElementMouseDown(e, $el))
-    $el.addEventListener('mouseup', e => {
-      setDragging(false)
+function render(state: Action[]) {
+  for (const layer of state) {
+    const $el = createShape({
+      top: layer.props.top,
+      left: layer.props.left,
+      width: 100,
+      height: 100,
+      styles: {
+        background: 'red'
+      }
     })
-    // $el.addEventListener('mousemove', e => onElementMove(e, $el))
+    $el.addEventListener('mousedown', e => onElementMouseDown(e, $el))
 
     $app.appendChild($el)
 
@@ -457,5 +515,4 @@ function render(layers: Layer[]) {
 }
 
 drawBase()
-render(layers)
-
+render(history)
