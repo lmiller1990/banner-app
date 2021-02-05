@@ -1,4 +1,4 @@
-function $<T extends HTMLDivElement>(q: string) {
+function $<T extends HTMLElement>(q: string) {
   return document.querySelector<T>(q)
 }
 
@@ -31,7 +31,6 @@ function getPosRelToApp($el: HTMLElement) {
   }
 }
 
-
 interface CreateElementOptions {
   x: number
   y: number
@@ -60,7 +59,6 @@ $app.addEventListener('click', (e) => {
   $app.appendChild($el)
 })
 
-
 function createEl(layer: Layer) {
   const $el = document.createElement(layer.el.type)
   $el.id = layer.el.id
@@ -68,8 +66,9 @@ function createEl(layer: Layer) {
   $el.style.left = layer.el.left + 'px'
   $el.style.width = layer.el.width + 'px'
   $el.style.height = layer.el.height + 'px'
-  $el.style.background = 'red'
+  $el.style.background = layer.el.background
   $el.style.position = 'absolute'
+  $el.textContent = layer.el.text
   return $el
 }
 
@@ -119,11 +118,30 @@ let clickY: number
 let handlePos: HandlePosition
 let originalHandlePos: HandleCoordinates
 let originalRect: Rect
+let selectedId: string
 
-let id: string
 const $cursor = $<HTMLDivElement>('#cursor-val')!
 const $handlePos = $<HTMLDivElement>('#handle-pos-val')!
-const $id = $<HTMLDivElement>('#id-val')!
+const $selectedId = $<HTMLDivElement>('#id-val')!
+const $addRandomShape = $<HTMLButtonElement>('#add-shape')!
+const $layers = $<HTMLDivElement>('#layers')!
+
+$addRandomShape.addEventListener('click', () => {
+  const randomTop = () => parseInt((Math.random() * 300).toFixed())
+  const randomLeft = () => parseInt((Math.random() * 550).toFixed())
+  const layer = createLayer({ top: randomTop(), left: randomLeft(), height: 100, width: 200 }, { background: 'red' })
+  render([layer])
+})
+
+function setSelectedId(id: string) {
+  selectedId = id
+  $selectedId.innerHTML = selectedId
+  $$('[data-type="handle"]').forEach($h => $h.style.visibility = 'hidden')
+  const handles = $$(`[data-el="${selectedId}"]`)
+  handles.forEach($h => {
+    $h.style.visibility = 'visible'
+  })
+}
 
 function startResize(e: MouseEvent, $h: HTMLDivElement, pos: HandlePosition, $el: HTMLDivElement) {
   setResizing(true)
@@ -131,14 +149,12 @@ function startResize(e: MouseEvent, $h: HTMLDivElement, pos: HandlePosition, $el
   clickX = x 
   clickY = y
   originalRect = getPosRelToApp($el)
-  id = $el.id
+  setSelectedId($el.id)
   const handleRect = getPosRelToApp($h)
   originalHandlePos = calcHandPos($el)
   handlePos = pos
   $cursor.innerText = `x: ${x} y: ${y}`
   $handlePos.innerText = `x: ${handleRect.left} y: ${handleRect.top}`
-  $id.innerText = $el.id
-  const sel = `[data-el="${$el.id}"]`
 }
 
 $app.addEventListener('mouseup', e => {
@@ -147,13 +163,13 @@ $app.addEventListener('mouseup', e => {
 })
 
 function handleDragging(e: MouseEvent) {
-  const $el = $(`#${id}`)!
+  const $el = $(`#${selectedId}`)!
   const { x, y } = getPos(e)
   const dx = x - clickX
   const dy = y - clickY
   $el.style.left = `${originalRect.left + dx}px`
   $el.style.top = `${originalRect.top + dy}px`
-  const handles = $$(`[data-el="${id}"]`)
+  const handles = $$(`[data-el="${selectedId}"]`)
   handles.forEach($h => {
     if ($h.id.includes('bl')) {
       $h.style.left = `${originalHandlePos.bl.left + dx}px`
@@ -181,7 +197,7 @@ function handleResize(e: MouseEvent) {
   let { x, y } = getPos(e)
   const dx = x - clickX
   const dy = y - clickY
-  const $el = $(`#${id}`)!
+  const $el = $(`#${selectedId}`)!
 
   if (handlePos === 'br') {
     const $br = $(`#${$el.id}-h-br`)!
@@ -285,6 +301,8 @@ function createHandle(options: CreateHandleOptions) {
   $handle.style.top = `${options.top}px`
   $handle.id = `${options.$el.id}-${options.id}`
   $handle.dataset.el = options.$el.id
+  $handle.dataset.type = 'handle'
+  $handle.style.visibility = 'hidden'
   $handle.className = 'cursor-pointer'
   $handle.style.height = `${sz}px`
   $handle.style.width =  `${sz}px`
@@ -295,25 +313,33 @@ function createHandle(options: CreateHandleOptions) {
 interface Layer {
   el: {
     id: string
-    type: 'div'
+    type: 'div' | 'p'
     top: number
     left: number
     height: number
     width: number
+    text: string
+    background: string
+  }
+}
+
+function createLayer({ top, left, height, width }: Rect, style: Record<'background', string>): Layer {
+  return {
+    el: {
+      id: `el-${(Math.random() * 1000).toFixed()}`,
+      type: 'p',
+      top,
+      background: style.background,
+      left,
+      height,
+      width,
+      text: 'Making a program'
+    }
   }
 }
 
 let layers: Layer[] = [
-  {
-    el: {
-      id: `el-${(Math.random() * 1000).toFixed()}`,
-      type: 'div',
-      top: 50,
-      left: 50,
-      height: 100,
-      width: 200
-    }
-  }
+  createLayer({ top: 50, left: 50, height: 100, width: 200 }, { background: 'red' })
 ]
 
 function calcHandPos($el: HTMLDivElement) {
@@ -353,7 +379,7 @@ function drawBase() {
 function onElementMouseDown(e: MouseEvent, $el: HTMLDivElement) {
   originalHandlePos = calcHandPos($el)
   setDragging(true)
-  id = $el.id
+  setSelectedId($el.id)
   const { x, y } = getPos(e)
   clickX = x 
   clickY = y
@@ -382,6 +408,13 @@ function render(layers: Layer[]) {
     // $el.addEventListener('mousemove', e => onElementMove(e, $el))
 
     $app.appendChild($el)
+
+    const $layerControl = document.createElement('button')
+    $layerControl.textContent = `Layer ${$el.id}`
+    $layerControl.addEventListener('click', () => {
+      setSelectedId($el.id)
+    })
+    $layers.appendChild($layerControl)
 
     const { br, bl, tr, tl } = calcHandPos($el)
     const $br = createHandle({
