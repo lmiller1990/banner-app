@@ -6,7 +6,8 @@ import {
   Action,
   Styles,
   Create,
-  createShape
+  createShape,
+  AllProps
 } from './core'
 
 function $<T extends HTMLElement>(q: string) {
@@ -131,7 +132,7 @@ let originalHandlePos: HandleCoordinates
 let dx: number = 0
 let dy: number = 0
 let originalRect: Rect
-let selectedId: string
+let selectedId: string | undefined
 
 const getSelectedElement = (id?: string) => {
   if (!id) {
@@ -167,14 +168,53 @@ $addRandomShape.addEventListener('click', () => {
   render([action])
 })
 
-function setSelectedId(id: string) {
+// function drawToolbar(shape: ) {
+// }
+
+function hideAllHandles() {
+  $$('[data-type="handle"]').forEach($h => $h.style.visibility = 'hidden')
+}
+
+function setSelectedId(id: string | undefined) {
+  if (!id) {
+    $selectedId.textContent = ''
+    hideAllHandles()
+    return selectedId = undefined
+  }
+
   selectedId = id
   $selectedId.innerHTML = selectedId
-  $$('[data-type="handle"]').forEach($h => $h.style.visibility = 'hidden')
+  hideAllHandles()
   const handles = $$(`[data-el="${selectedId}"]`)
   handles.forEach($h => {
     $h.style.visibility = 'visible'
   })
+  drawToolbar(id, history)
+}
+
+function drawToolbar(id: string, history: Action[]) {
+  const mostRecentState = history.reverse().find(x => x.id === id)
+  if (!mostRecentState) {
+    throw Error('wtf')
+  }
+
+  const createInput = (attr: string, value: string) => {
+    const $label = document.createElement('label')
+    $label.textContent = attr
+    const $input = document.createElement('input')
+    $input.type = 'text'
+    $input.value = value
+    const $wrapper = document.createElement('div')
+    $wrapper.appendChild($label)
+    $wrapper.appendChild($input)
+    return $wrapper
+  }
+
+  for (const style of mostRecentState.) {
+
+  }
+
+  console.log(history)  
 }
 
 function startResize(e: MouseEvent, $h: HTMLDivElement, pos: HandlePosition, $el: HTMLDivElement) {
@@ -192,6 +232,14 @@ function startResize(e: MouseEvent, $h: HTMLDivElement, pos: HandlePosition, $el
 }
 
 $app.addEventListener('mouseup', e => {
+  if (e.target === $base) {
+    return setSelectedId(undefined)
+  }
+
+  if (!selectedId) {
+    return
+  }
+
   const currentBoundingRect = getSelectedElement(selectedId).getBoundingClientRect()
   const hasResized = (dx !== 0 || dy !== 0 || currentBoundingRect.width !== originalRect.width || currentBoundingRect.height !== originalRect.height)
 
@@ -431,15 +479,18 @@ function calcHandPos($el: HTMLDivElement) {
   }
 }
 
+let $base: HTMLDivElement
+
 function drawBase() {
-  const $layer = document.createElement('div')
-  $layer.style.position = 'absolute'
-  $layer.style.height = height + 'px'
-  $layer.style.width = width + 'px'
-  $layer.style.top = '0px'
-  $layer.style.left = '0px'
-  $layer.style.background = 'blue'
-  $app.appendChild($layer)
+  $base = document.createElement('div')
+  $base.dataset.type = 'base'
+  $base.style.position = 'absolute'
+  $base.style.height = height + 'px'
+  $base.style.width = width + 'px'
+  $base.style.top = '0px'
+  $base.style.left = '0px'
+  $base.style.background = 'blue'
+  $app.appendChild($base)
 }
 
 function onElementMouseDown(e: MouseEvent, $el: HTMLDivElement) {

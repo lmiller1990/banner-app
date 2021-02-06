@@ -1,6 +1,8 @@
 export type SupportedCSSRule = 'background' | 'color'
 export type Styles = Partial<Record<SupportedCSSRule, string>>
 
+export type AllProps = 'top' | 'left' | 'bottom' | 'right' | SupportedCSSRule
+
 export interface Resize {
   type: 'resize'
   id: string
@@ -10,6 +12,7 @@ export interface Resize {
     width: number
     height: number
   }
+  styles: {}
 }
 
 export interface Move {
@@ -41,6 +44,7 @@ export interface Create {
   element: 'div' | 'p'
   id: string
   props: CreateShapeProps | CreateTextProps
+  styles: Styles
 }
 
 export type Action = Resize | Move | Create
