@@ -5,6 +5,8 @@ export interface Rect {
   height: number
 }
 
+export const supportedRules = ['background', 'color', 'width', 'height', 'top', 'left', 'borderRadius'] as const
+
 export type HandlePosition = 'tr' | 'tl' | 'br' | 'bl'
 
 export interface WorldState<ActionCache> {
@@ -21,7 +23,6 @@ export const createGlobalState = <T>() => {
     activeElementId: undefined,
     clickX: undefined,
     clickY: undefined,
-    activeHandle: undefined,
     action: undefined,
     actionCache: undefined,
     mutations: []

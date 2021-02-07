@@ -22,7 +22,16 @@ interface Props {
   styles?: Record<string, any>
 }
 
-const h = (type: string, props: Props = {}, dataset: Record<string, string> = {}) => {
+// function drawTools(rules: typeof supportedRules) {
+//   const map = rules.map(rule => {
+//     const el = h('div')
+//     const label = h('label')
+//     label.innerText = rule
+//     const input = h('input', { value: 0 })
+//   })
+// }
+
+const h = (type: string, props: Props = {}, dataset: Record<string, string> = {}, children: HTMLElement[] = []) => {
   const el = document.createElement(type)
   el.style.position = 'absolute'
 
@@ -41,6 +50,13 @@ const h = (type: string, props: Props = {}, dataset: Record<string, string> = {}
       }
     }
   }
+
+  if (children) {
+    for (const c of children) {
+      el.appendChild(c)
+    }
+  }
+
   return el
 }
 

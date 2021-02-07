@@ -1,5 +1,5 @@
-import { Mutation, addMutation } from "./core"
-import { appOnMouseMove, createApp, documentOnMouseUp, prepareInitialState } from "./ui"
+import { Mutation } from "./core"
+import { appOnMouseMove, createApp, prepareInitialState } from "./ui"
 
 const app = createApp()
 document.body.appendChild(app.el)
