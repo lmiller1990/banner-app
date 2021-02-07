@@ -11,9 +11,9 @@ export interface WorldState<ActionCache> {
   activeElementId?: string
   clickX?: number
   clickY?: number
-  activeHandle?: HandlePosition
   actionCache?: ActionCache
   action?: 'dragging' | 'resizing'
+  mutations: Mutation[]
 }
 
 export const createGlobalState = <T>() => {
@@ -24,6 +24,7 @@ export const createGlobalState = <T>() => {
     activeHandle: undefined,
     action: undefined,
     actionCache: undefined,
+    mutations: []
   }, {
     set: (obj: WorldState<T>, prop: keyof WorldState<T>, val: string | number | undefined) => {
       const out = typeof val === 'object' ? JSON.stringify(val) : val
@@ -71,7 +72,20 @@ export function keys<T>(o: T) {
 }
 
 
-export const deriveHandles = (mutation: Mutation, size: number) => {
+interface HandleData {
+  pos: HandlePosition
+  top: number
+  left: number
+}
+
+interface DeriveHandles {
+  tl: HandleData
+  tr: HandleData
+  br: HandleData
+  bl: HandleData
+}
+
+export const deriveHandles = (mutation: Mutation, size: number): DeriveHandles => {
   const { top, left, width, height } = mutation.styles
 
   return {

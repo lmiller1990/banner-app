@@ -20,16 +20,7 @@ let mutations: Mutation[] = [
   }
 ]
 
-const updateHistory = (mutation: Mutation) => addMutation(mutations, mutation)
-
-document.addEventListener('mouseup', (e: MouseEvent) => {
-  documentOnMouseUp(e, (mutation: Mutation) => {
-    mutations = updateHistory(mutation)
-  })
-})
-
-
-app.el.addEventListener('mousemove', e => appOnMouseMove(e, mutations))
+app.el.addEventListener('mousemove', e => appOnMouseMove(e))
 
 const state = prepareInitialState(mutations)
 
