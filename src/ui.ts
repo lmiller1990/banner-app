@@ -1,4 +1,14 @@
-import { addMutation, createGlobalState, deriveHandles, getState, HandlePosition, keys, Mutation, WorldState } from "./core"
+import {
+  addMutation,
+  createGlobalState,
+  deriveHandles,
+  getState,
+  HandlePosition,
+  keys,
+  Mutation,
+  WorldState
+} from "./core"
+import { myH } from "./utils"
 
 const scale = 0.5
 const size = 10
@@ -21,6 +31,20 @@ function $$<T extends HTMLElement>(q: string) {
 interface Props {
   styles?: Record<string, any>
 }
+
+const foo = myH('div', { 
+  style: { 
+    top: '10px' 
+  }, 
+  dataset: {
+    el: 'asdf',
+  },
+  title: 'foo'
+}, [
+  myH('div', {}, 'ok!')
+])
+console.log(foo)
+document.body.appendChild(foo)
 
 // function drawTools(rules: typeof supportedRules) {
 //   const map = rules.map(rule => {
