@@ -19,7 +19,7 @@ const dataset = (el: HTMLElement, key: string, data: Record<string, string>) => 
   return el
 }
 
-export function myH(tag: string, attrs: Record<string, any> = {}, content: Content = []) {
+export function h(tag: string, attrs: Record<string | 'style' | 'dataset', any> = {}, content: Content = []) {
   let el = document.createElement(tag)
   for (const k in attrs) {
     if (k === 'dataset' || k === 'style') {

@@ -14,6 +14,7 @@ let mutations: Mutation[] = [
       left: 100,
       width: 50,
       height: 50,
+      position: 'absolute',
       background: 'red',
       color: 'white'
     }

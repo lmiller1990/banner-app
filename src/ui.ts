@@ -8,7 +8,7 @@ import {
   Mutation,
   WorldState
 } from "./core"
-import { myH } from "./utils"
+import { h } from "./utils"
 
 const scale = 0.5
 const size = 10
@@ -32,7 +32,7 @@ interface Props {
   styles?: Record<string, any>
 }
 
-const foo = myH('div', { 
+const foo = h('div', { 
   style: { 
     top: '10px' 
   }, 
@@ -41,7 +41,7 @@ const foo = myH('div', {
   },
   title: 'foo'
 }, [
-  myH('div', {}, 'ok!')
+  h('div', {}, 'ok!')
 ])
 console.log(foo)
 document.body.appendChild(foo)
@@ -54,35 +54,6 @@ document.body.appendChild(foo)
 //     const input = h('input', { value: 0 })
 //   })
 // }
-
-const h = (type: string, props: Props = {}, dataset: Record<string, string> = {}, children: HTMLElement[] = []) => {
-  const el = document.createElement(type)
-  el.style.position = 'absolute'
-
-  for (const [key, val] of Object.entries(dataset)) {
-    el.dataset[key] = val
-  }
-
-  if (props.styles) {
-    for (const [key, val] of Object.entries(props.styles)) {
-      if (['top', 'left', 'width', 'height'].includes(key)) {
-        const k = key as 'top' | 'left' | 'width' | 'height'
-        el.style[k] = `${val}px`
-      } else {
-        const k = key as 'background'
-        el.style[k] = val
-      }
-    }
-  }
-
-  if (children) {
-    for (const c of children) {
-      el.appendChild(c)
-    }
-  }
-
-  return el
-}
 
 const resetGlobalState = () => {
   for (const k of Object.keys(globalState)) {
@@ -141,7 +112,17 @@ export const getBoundingRectRelTo = (el: HTMLElement, relativeTo: HTMLElement): 
 
 
 export function createApp() {
-  const app = h('div', { styles: { height, width, background: 'blue' } }, { el: 'app' })
+  const app = h('div', { 
+    dataset: {
+      el: 'app'
+    },
+    style: { 
+      position: 'absolute',
+      height: `${height}px`, 
+      width: `${width}px`, 
+      background: 'blue'
+    }
+  })
 
   return {
     el: app,
@@ -348,6 +329,18 @@ interface Layer {
   handles: HTMLElement[]
 }
 
+function pixelifyStyles(styles: Record<string, any>) {
+  const s = {...styles}
+  for (const k in styles) {
+    if (['top', 'left', 'width', 'height'].includes(k)) {
+      s[k] = styles[k] + 'px'
+    } else {
+      s[k] = styles[k]
+    }
+  }
+  return s
+}
+
 export function prepareInitialState(mutations: Mutation[]): Layer[] {
   globalState.mutations = mutations
   const state = getState(mutations)
@@ -355,16 +348,25 @@ export function prepareInitialState(mutations: Mutation[]): Layer[] {
   return state.map(mut => {
     const handles = Object.values(deriveHandles(mut, size)).map(handle => {
       const { left, top } = handle
-      const $handle = h('div', { 
-        styles: { left, top, width: size, height: size, background: handleColor, zIndex: 100 }
-      }, {
-        handle: `el-${mut.id}-${handle.pos}`
+      const $handle = h('div', {
+        style: {
+          left: `${left}px`,
+          top: `${top}px`,
+          width: `${size}px`,
+          height: `${size}px`,
+          background: handleColor,
+          position: 'absolute',
+          zIndex: 100
+        },
+        dataset: {
+          handle: `el-${mut.id}-${handle.pos}`
+        }
       })
       $handle.addEventListener('mousedown', (e: MouseEvent) => handleOnMouseDown(e, mut.id, handle.pos))
       return $handle
     })
 
-    const element = h('div', { styles: mut.styles }, { el: mut.id })
+    const element = h('div', { style: pixelifyStyles(mut.styles), dataset: { el: mut.id } })
     element.addEventListener('mousedown', (e: MouseEvent) => elementOnMouseDown(e, mut.id))
 
     return {

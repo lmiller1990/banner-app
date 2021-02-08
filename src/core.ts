@@ -40,6 +40,7 @@ export interface Mutation {
   text: string
   styles: {
     zIndex: number
+    position: 'absolute'
     top: number
     left: number
     width: number
